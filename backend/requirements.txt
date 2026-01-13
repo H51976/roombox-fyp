@@ -1,0 +1,25 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+pydantic-settings==2.5.2
+python-multipart==0.0.12
+python-dotenv==1.0.1
+email-validator==2.3.0
+
+# Database
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+alembic==1.14.0
+
+# Authentication
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+PyJWT==2.9.0
+
+# WebSocket/Socket.IO
+python-socketio==5.11.0
+python-socketio[client]==5.11.0
+
+# Payment Gateway
+django-esewa==1.0.9
+
