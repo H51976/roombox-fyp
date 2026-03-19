@@ -29,14 +29,9 @@ export default function RegisterPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
-    
-    if (type === "radio") {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
-    
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
     if (errors[name as keyof typeof errors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
@@ -44,13 +39,7 @@ export default function RegisterPage() {
   };
 
   const validateForm = () => {
-    const newErrors: {
-      full_name?: string;
-      email?: string;
-      password?: string;
-      confirm_password?: string;
-      phone?: string;
-    } = {};
+    const newErrors: typeof errors = {};
 
     if (!formData.full_name.trim()) {
       newErrors.full_name = "Full name is required";
@@ -88,7 +77,7 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -102,33 +91,23 @@ export default function RegisterPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          full_name: formData.full_name,
-          email: formData.email,
-          password: formData.password,
-          confirm_password: formData.confirm_password,
-          phone: formData.phone,
-          user_type: formData.user_type,
-        }),
+        body: JSON.stringify(formData),
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Store token and user data if provided
         if (data.data?.access_token) {
           localStorage.setItem("auth_token", data.data.access_token);
         }
         if (data.data?.user) {
           localStorage.setItem("user", JSON.stringify(data.data.user));
         }
-        
-        // Show success toast
+
         toast.success("Registration successful!", {
           description: `Welcome to RoomBox, ${data.data?.user?.full_name || "User"}!`,
         });
-        
-        // Redirect to login or home
+
         router.push("/login");
       } else {
         const errorMsg = data.message || "Registration failed. Please try again.";
@@ -142,9 +121,7 @@ export default function RegisterPage() {
       }
     } catch (error: any) {
       console.error("Registration error:", error);
-      const errorMsg = error?.message?.includes("Failed to fetch") || error?.message?.includes("NetworkError")
-        ? "Cannot connect to server. Please ensure the backend is running on http://localhost:8000"
-        : "An error occurred. Please try again.";
+      const errorMsg = "Cannot connect to server. Please ensure the backend is running.";
       setErrorMessage(errorMsg);
       toast.error("Connection error", {
         description: errorMsg,
@@ -155,258 +132,215 @@ export default function RegisterPage() {
   };
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center px-4 py-6 bg-cover bg-center bg-no-repeat relative overflow-hidden"
-      style={{
-        backgroundImage: "url('/loginpagebg.png')",
-      }}
-    >
-      <div className="w-full max-w-2xl relative z-10">
-        <div className="mb-4">
-          <Link href="/" className="inline-flex items-center space-x-2 text-gray-900 hover:text-gray-700 mb-3 text-xs backdrop-blur-sm bg-white/30 px-2.5 py-1 rounded-full transition-all font-medium">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-xl w-full space-y-8 bg-white p-10 rounded-xl shadow-md border border-gray-100">
+        <div>
+          <Link href="/" className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500 mb-6 transition-colors">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            <span>Back to Home</span>
+            Back to Home
           </Link>
-          <div className="flex items-center space-x-2 mb-2">
-            <div className="w-8 h-8 bg-white/40 backdrop-blur-md rounded-lg flex items-center justify-center border border-white/50 shadow-lg">
-              <span className="text-gray-900 font-bold text-lg">R</span>
+          <div className="flex items-center space-x-3 justify-center mb-6">
+            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-xl">R</span>
             </div>
-            <span className="text-xl font-semibold text-gray-900 drop-shadow-sm">RoomBox</span>
+            <span className="text-3xl font-extrabold text-gray-900 tracking-tight">RoomBox</span>
           </div>
-          <h1 className="text-xl font-semibold text-gray-900 drop-shadow-sm">Create Your Account</h1>
-          <p className="text-gray-700 text-xs">Join RoomBox and start your journey</p>
+          <h2 className="text-center text-2xl font-bold text-gray-900">Create your account</h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Join thousands of users finding their perfect space
+          </p>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl p-6 backdrop-saturate-150 max-h-[calc(100vh-200px)] overflow-y-auto">
-          <form onSubmit={handleSubmit} className="space-y-3">
-            {errorMessage && (
-              <div className="bg-red-100/90 backdrop-blur-sm border border-red-300/50 text-red-800 px-4 py-3 rounded-xl text-sm">
-                {errorMessage}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                I am a
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <label
-                  className={`relative flex flex-col items-center justify-center p-3 border-2 rounded-xl cursor-pointer transition-all backdrop-blur-md ${
-                    formData.user_type === "tenant"
-                      ? "border-blue-500/70 bg-white/40 shadow-lg"
-                      : "border-gray-300/50 hover:border-gray-400/50 bg-white/30"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="user_type"
-                    value="tenant"
-                    checked={formData.user_type === "tenant"}
-                    onChange={handleChange}
-                    className="sr-only"
-                  />
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center mb-1.5 ${
-                    formData.user_type === "tenant"
-                      ? "border-blue-600"
-                      : "border-gray-400"
-                  }`}>
-                    {formData.user_type === "tenant" && (
-                      <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-                    )}
-                  </div>
-                  <span className={`text-xs font-medium ${
-                    formData.user_type === "tenant" ? "text-gray-900" : "text-gray-700"
-                  }`}>
-                    Tenant
-                  </span>
-                  <span className={`text-[10px] mt-0.5 ${
-                    formData.user_type === "tenant" ? "text-gray-700" : "text-gray-600"
-                  }`}>
-                    Looking for a room
-                  </span>
-                </label>
-                
-                <label
-                  className={`relative flex flex-col items-center justify-center p-3 border-2 rounded-xl cursor-pointer transition-all backdrop-blur-md ${
-                    formData.user_type === "landlord"
-                      ? "border-blue-500/70 bg-white/40 shadow-lg"
-                      : "border-gray-300/50 hover:border-gray-400/50 bg-white/30"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="user_type"
-                    value="landlord"
-                    checked={formData.user_type === "landlord"}
-                    onChange={handleChange}
-                    className="sr-only"
-                  />
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center mb-1.5 ${
-                    formData.user_type === "landlord"
-                      ? "border-blue-600"
-                      : "border-gray-400"
-                  }`}>
-                    {formData.user_type === "landlord" && (
-                      <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-                    )}
-                  </div>
-                  <span className={`text-xs font-medium ${
-                    formData.user_type === "landlord" ? "text-gray-900" : "text-gray-700"
-                  }`}>
-                    Landlord
-                  </span>
-                  <span className={`text-[10px] mt-0.5 ${
-                    formData.user_type === "landlord" ? "text-gray-700" : "text-gray-600"
-                  }`}>
-                    List my property
-                  </span>
-                </label>
-              </div>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {errorMessage && (
+            <div className="rounded-md bg-red-50 p-4 border border-red-200">
+              <div className="text-sm text-red-700">{errorMessage}</div>
             </div>
+          )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="full_name" className="block text-xs font-medium text-gray-900 mb-1">
-                  Full Name
-                </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">I am a...</label>
+            <div className="grid grid-cols-2 gap-4">
+              <label
+                className={`flex flex-col p-4 border rounded-lg cursor-pointer transition-colors ${formData.user_type === "tenant"
+                    ? "border-blue-600 bg-blue-50 ring-1 ring-blue-600"
+                    : "border-gray-200 hover:bg-gray-50"
+                  }`}
+              >
                 <input
-                  type="text"
+                  type="radio"
+                  name="user_type"
+                  value="tenant"
+                  checked={formData.user_type === "tenant"}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <span className={`text-base font-semibold ${formData.user_type === "tenant" ? "text-blue-900" : "text-gray-900"}`}>
+                  Tenant
+                </span>
+                <span className="text-sm mt-1 text-gray-500">Looking for a room</span>
+              </label>
+
+              <label
+                className={`flex flex-col p-4 border rounded-lg cursor-pointer transition-colors ${formData.user_type === "landlord"
+                    ? "border-blue-600 bg-blue-50 ring-1 ring-blue-600"
+                    : "border-gray-200 hover:bg-gray-50"
+                  }`}
+              >
+                <input
+                  type="radio"
+                  name="user_type"
+                  value="landlord"
+                  checked={formData.user_type === "landlord"}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <span className={`text-base font-semibold ${formData.user_type === "landlord" ? "text-blue-900" : "text-gray-900"}`}>
+                  Landlord
+                </span>
+                <span className="text-sm mt-1 text-gray-500">Listing my property</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+              <div className="mt-1">
+                <input
                   id="full_name"
                   name="full_name"
+                  type="text"
+                  autoComplete="name"
                   value={formData.full_name}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 bg-white/40 backdrop-blur-md border rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all text-sm text-gray-900 placeholder:text-gray-500 ${
-                    errors.full_name ? "border-red-400/70 bg-red-50/50" : "border-gray-300/50"
-                  }`}
+                  className={`appearance-none block w-full px-3 py-2 bg-white text-gray-900 border ${errors.full_name ? "border-red-300" : "border-gray-300"
+                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                   placeholder="John Doe"
                 />
-                {errors.full_name && (
-                  <p className="mt-0.5 text-[10px] text-red-700">{errors.full_name}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-xs font-medium text-gray-900 mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 bg-white/40 backdrop-blur-md border rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all text-sm text-gray-900 placeholder:text-gray-500 ${
-                    errors.email ? "border-red-400/70 bg-red-50/50" : "border-gray-300/50"
-                  }`}
-                  placeholder="you@example.com"
-                />
-                {errors.email && (
-                  <p className="mt-0.5 text-[10px] text-red-700">{errors.email}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="phone" className="block text-xs font-medium text-gray-900 mb-1">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 bg-white/40 backdrop-blur-md border rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all text-sm text-gray-900 placeholder:text-gray-500 ${
-                    errors.phone ? "border-red-400/70 bg-red-50/50" : "border-gray-300/50"
-                  }`}
-                  placeholder="98XXXXXXXX"
-                />
-                {errors.phone && (
-                  <p className="mt-0.5 text-[10px] text-red-700">{errors.phone}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-xs font-medium text-gray-900 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 bg-white/40 backdrop-blur-md border rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all text-sm text-gray-900 placeholder:text-gray-500 ${
-                    errors.password ? "border-red-400/70 bg-red-50/50" : "border-gray-300/50"
-                  }`}
-                  placeholder="Create a password"
-                />
-                {errors.password && (
-                  <p className="mt-0.5 text-[10px] text-red-700">{errors.password}</p>
-                )}
+                {errors.full_name && <p className="mt-1 text-sm text-red-600">{errors.full_name}</p>}
               </div>
             </div>
 
             <div>
-              <label htmlFor="confirm_password" className="block text-xs font-medium text-gray-900 mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email Address
+              </label>
+              <div className="mt-1">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={`appearance-none block w-full px-3 py-2 bg-white text-gray-900 border ${errors.email ? "border-red-300" : "border-gray-300"
+                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                  placeholder="you@example.com"
+                />
+                {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                Phone Number
+              </label>
+              <div className="mt-1">
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className={`appearance-none block w-full px-3 py-2 bg-white text-gray-900 border ${errors.phone ? "border-red-300" : "border-gray-300"
+                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                  placeholder="98XXXXXXXX"
+                />
+                {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+              </div>
+            </div>
+
+            <div className="hidden sm:block"></div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <div className="mt-1">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={`appearance-none block w-full px-3 py-2 bg-white text-gray-900 border ${errors.password ? "border-red-300" : "border-gray-300"
+                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                  placeholder="••••••••"
+                />
+                {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="confirm_password" className="block text-sm font-medium text-gray-700">
                 Confirm Password
               </label>
-              <input
-                type="password"
-                id="confirm_password"
-                name="confirm_password"
-                value={formData.confirm_password}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 bg-white/40 backdrop-blur-md border rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all text-sm text-gray-900 placeholder:text-gray-500 ${
-                  errors.confirm_password ? "border-red-400/70 bg-red-50/50" : "border-gray-300/50"
-                }`}
-                placeholder="Confirm your password"
-              />
-              {errors.confirm_password && (
-                <p className="mt-0.5 text-[10px] text-red-700">{errors.confirm_password}</p>
-              )}
+              <div className="mt-1">
+                <input
+                  id="confirm_password"
+                  name="confirm_password"
+                  type="password"
+                  value={formData.confirm_password}
+                  onChange={handleChange}
+                  className={`appearance-none block w-full px-3 py-2 bg-white text-gray-900 border ${errors.confirm_password ? "border-red-300" : "border-gray-300"
+                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                  placeholder="••••••••"
+                />
+                {errors.confirm_password && <p className="mt-1 text-sm text-red-600">{errors.confirm_password}</p>}
+              </div>
             </div>
+          </div>
 
-            <div className="flex items-start">
-              <input
-                id="terms"
-                name="terms"
-                type="checkbox"
-                required
-                className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-gray-400/50 rounded mt-0.5 bg-white/40 backdrop-blur-sm"
-              />
-              <label htmlFor="terms" className="ml-2 block text-xs text-gray-900">
-                I agree to the{" "}
-                <Link href="#" className="text-gray-900 hover:text-gray-700 font-medium underline underline-offset-2 transition-colors">
-                  Terms and Conditions
-                </Link>{" "}
-                and{" "}
-                <Link href="#" className="text-gray-900 hover:text-gray-700 font-medium underline underline-offset-2 transition-colors">
-                  Privacy Policy
-                </Link>
-              </label>
-            </div>
+          <div className="flex items-center">
+            <input
+              id="terms"
+              name="terms"
+              type="checkbox"
+              required
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+            />
+            <label htmlFor="terms" className="ml-2 block text-sm text-gray-900 cursor-pointer">
+              I agree to the{" "}
+              <Link href="#" className="font-medium text-blue-600 hover:text-blue-500">
+                Terms and Conditions
+              </Link>
+            </label>
+          </div>
 
+          <div>
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 px-4 bg-white/40 backdrop-blur-md text-gray-900 rounded-xl hover:bg-white/50 border border-gray-300/50 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isLoading ? "Creating Account..." : "Create Account"}
+              {isLoading ? "Creating account..." : "Create Account"}
             </button>
-          </form>
-
-          <div className="mt-4 pt-4 border-t border-gray-300/30">
-            <p className="text-center text-xs text-gray-900">
-              Already have an account?{" "}
-              <Link href="/login" className="text-gray-900 hover:text-gray-700 font-medium underline underline-offset-2 transition-colors">
-                Sign in
-              </Link>
-            </p>
           </div>
+        </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Already have an account?{" "}
+            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
+              Sign in
+            </Link>
+          </p>
         </div>
       </div>
     </div>
