@@ -31,6 +31,11 @@ class User(Base):
     # Profile fields
     is_verified = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+
+    # Email verification & password reset tokens
+    email_verification_token = Column(String(128), nullable=True, index=True)
+    password_reset_token = Column(String(128), nullable=True, index=True)
+    password_reset_token_expiry = Column(DateTime, nullable=True)
     profile_picture = Column(String(500), nullable=True)
     bio = Column(String(1000), nullable=True)
     

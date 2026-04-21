@@ -52,6 +52,13 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
+    # Email Settings
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_FROM: str = ""
+    MAIL_FROM_NAME: str = "RoomBox"
+    FRONTEND_URL: str = "http://localhost:3000"
+
     # API Settings
     API_V1_PREFIX: str = "/api/v1"
     

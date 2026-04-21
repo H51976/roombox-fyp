@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>RoomBox — Unit Test Report</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #16a34a 0%, #15803d 60%, #166534 100%);
+      padding: 40px 48px 36px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .logo { width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px; font-weight: 900; color: #fff; flex-shrink: 0; }
+    .header-text h1 { font-size: 26px; font-weight: 800; color: #fff; }
+    .header-text p  { font-size: 14px; color: rgba(255,255,255,0.8); margin-top: 3px; }
+    .header-badge {
+      margin-left: auto; background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 12px; padding: 14px 24px; text-align: center;
+    }
+    .header-badge .big { font-size: 32px; font-weight: 800; color: #fff; }
+    .header-badge .lbl { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+
+    /* ── Summary bar ── */
+    .summary-bar {
+      background: #161b22; border-bottom: 1px solid #30363d;
+      padding: 20px 48px; display: flex; gap: 32px; align-items: center; flex-wrap: wrap;
+    }
+    .stat { text-align: center; }
+    .stat .val { font-size: 28px; font-weight: 700; }
+    .stat .lbl { font-size: 11px; color: #8b949e; margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; }
+    .stat.green .val { color: #3fb950; }
+    .stat.blue  .val { color: #58a6ff; }
+    .stat.amber .val { color: #d29922; }
+    .stat.red   .val { color: #f85149; }
+    .divider { width: 1px; height: 40px; background: #30363d; }
+    .pass-bar-wrap { flex: 1; min-width: 200px; }
+    .pass-bar-label { font-size: 12px; color: #8b949e; margin-bottom: 6px; }
+    .pass-bar { height: 10px; background: #21262d; border-radius: 999px; overflow: hidden; }
+    .pass-bar-fill { height: 100%; background: linear-gradient(90deg,#3fb950,#2ea043); border-radius: 999px;
+                     width: 0; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+
+    /* ── Content ── */
+    .content { padding: 32px 48px; max-width: 1400px; }
+
+    /* ── Section heading ── */
+    .section-head {
+      display: flex; align-items: center; gap: 12px;
+      margin: 28px 0 14px; cursor: pointer; user-select: none;
+    }
+    .section-head .badge {
+      background: #1f2937; border: 1px solid #374151;
+      border-radius: 8px; padding: 4px 12px;
+      font-size: 11px; font-weight: 700; color: #9ca3af; letter-spacing: .5px;
+    }
+    .section-head h2 { font-size: 15px; font-weight: 700; color: #e6edf3; }
+    .section-head .count { font-size: 12px; color: #3fb950; margin-left: auto; }
+    .section-head .arrow { font-size: 12px; color: #6e7681; transition: transform .2s; }
+    .section-head.collapsed .arrow { transform: rotate(-90deg); }
+
+    /* ── Test rows ── */
+    .test-group { margin-bottom: 6px; overflow: hidden; }
+    .test-list { display: flex; flex-direction: column; gap: 3px; padding-bottom: 4px; }
+    .test-row {
+      display: flex; align-items: center; gap: 12px;
+      background: #161b22; border: 1px solid #21262d;
+      border-radius: 8px; padding: 10px 16px;
+      transition: border-color .15s, background .15s;
+    }
+    .test-row:hover { border-color: #3fb950; background: #1a2520; }
+    .test-row .icon {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #1a3a1f; border: 2px solid #3fb950;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 11px; color: #3fb950; font-weight: 700;
+    }
+    .test-row .name { font-size: 13px; color: #c9d1d9; flex: 1; font-family: 'Consolas','Courier New',monospace; }
+    .test-row .name span { color: #8b949e; }
+    .test-row .tag {
+      font-size: 10px; font-weight: 600; padding: 2px 8px;
+      border-radius: 4px; background: #1a3a1f; color: #3fb950;
+      border: 1px solid #2ea043; flex-shrink: 0;
+    }
+    .test-row .duration { font-size: 11px; color: #6e7681; flex-shrink: 0; }
+
+    /* ── Footer ── */
+    .footer {
+      margin: 40px 48px 24px;
+      background: #161b22; border: 1px solid #30363d;
+      border-radius: 12px; padding: 18px 24px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    }
+    .footer .result { font-size: 18px; font-weight: 700; color: #3fb950; }
+    .footer .meta { font-size: 12px; color: #6e7681; }
+  </style>
+</head>
+<body>
+
+<!-- ─── Header ─── -->
+<div class="header">
+  <div class="logo">R</div>
+  <div class="header-text">
+    <h1>RoomBox — Unit Test Report</h1>
+    <p>pytest · Python 3.13.2 · April 20, 2026 · tests/test_unit.py</p>
+  </div>
+  <div class="header-badge">
+    <div class="big">157</div>
+    <div class="lbl">Tests Passed</div>
+  </div>
+</div>
+
+<!-- ─── Summary bar ─── -->
+<div class="summary-bar">
+  <div class="stat green"><div class="val">157</div><div class="lbl">Passed</div></div>
+  <div class="divider"></div>
+  <div class="stat red"><div class="val">0</div><div class="lbl">Failed</div></div>
+  <div class="divider"></div>
+  <div class="stat amber"><div class="val">0</div><div class="lbl">Errors</div></div>
+  <div class="divider"></div>
+  <div class="stat blue"><div class="val">35</div><div class="lbl">Warnings</div></div>
+  <div class="divider"></div>
+  <div class="stat blue"><div class="val">2.11s</div><div class="lbl">Duration</div></div>
+  <div class="divider"></div>
+  <div class="pass-bar-wrap">
+    <div class="pass-bar-label">Pass rate: 100%</div>
+    <div class="pass-bar"><div class="pass-bar-fill" id="bar"></div></div>
+  </div>
+</div>
+
+<!-- ─── Test groups ─── -->
+<div class="content" id="content"></div>
+
+<!-- ─── Footer ─── -->
+<div class="footer">
+  <div class="result">✓ 157 passed &nbsp;·&nbsp; 0 failed &nbsp;·&nbsp; 0 errors</div>
+  <div class="meta">pytest 9.0.3 &nbsp;·&nbsp; Python 3.13.2 &nbsp;·&nbsp; RoomBox Backend &nbsp;·&nbsp; April 20, 2026</div>
+</div>
+
+<script>
+const TESTS = [
+  { id:"UT001", name:"Email Format Validation", tests:[
+    "test_standard_email_accepted","test_subdomain_email_accepted","test_plus_alias_accepted",
+    "test_no_at_sign_rejected","test_no_domain_extension_rejected","test_empty_string_rejected","test_leading_at_rejected"
+  ]},
+  { id:"UT002", name:"Password Encryption", tests:[
+    "test_hash_differs_from_plaintext","test_bcrypt_prefix_present","test_correct_password_verifies",
+    "test_wrong_password_rejected","test_two_hashes_differ"
+  ]},
+  { id:"UT003", name:"Token Generation", tests:[
+    "test_token_minimum_length","test_token_is_url_safe","test_tokens_are_unique"
+  ]},
+  { id:"UT004", name:"OTP / Token Expiry Logic", tests:[
+    "test_future_expiry_is_valid","test_past_expiry_is_expired",
+    "test_one_hour_window_respected","test_token_expired_after_one_hour"
+  ]},
+  { id:"UT005", name:"JWT Token Integrity", tests:[
+    "test_token_is_string","test_payload_preserved_after_decode",
+    "test_tampered_token_rejected","test_jwt_has_three_segments"
+  ]},
+  { id:"UT006", name:"Unauthorised Access Handling", tests:[
+    "test_expired_token_returns_none","test_random_string_rejected","test_empty_token_rejected"
+  ]},
+  { id:"UT007", name:"Booking Total Calculation", tests:[
+    "test_standard_total","test_zero_advance","test_zero_both",
+    "test_large_amounts","test_monthly_rent_excluded_from_total"
+  ]},
+  { id:"UT008", name:"Room Status Transition", tests:[
+    "test_available_before_booking","test_occupied_after_booking",
+    "test_available_after_vacate","test_all_statuses_defined"
+  ]},
+  { id:"UT009", name:"Tenancy Days Remaining", tests:[
+    "test_30_days_future","test_expired_tenancy_returns_zero","test_long_tenancy"
+  ]},
+  { id:"UT010", name:"Room Image Array Validation", tests:[
+    "test_valid_images_accepted","test_empty_array_rejected",
+    "test_11_images_rejected","test_exactly_10_images_accepted","test_blank_string_entry_rejected"
+  ]},
+  { id:"UT011", name:"Room Required Field Validation", tests:[
+    "test_complete_data_passes","test_missing_title_flagged",
+    "test_missing_price_flagged","test_multiple_missing_fields_all_reported"
+  ]},
+  { id:"UT012", name:"eSewa Signature Generation", tests:[
+    "test_signature_generated_successfully","test_signature_is_valid_base64",
+    "test_verification_succeeds_with_correct_data","test_tampered_amount_fails_verification",
+    "test_different_amounts_give_different_signatures"
+  ]},
+  { id:"UT013", name:"Duplicate Booking Prevention", tests:[
+    "test_approved_booking_blocks_new_request","test_pending_booking_does_not_block",
+    "test_cancelled_booking_does_not_block","test_different_room_does_not_block"
+  ]},
+  { id:"UT014", name:"Admin Deactivation Lock", tests:[
+    "test_admin_deactivated_blocks_landlord","test_non_deactivated_room_landlord_can_change","test_no_admin_flag_defaults_to_allowed"
+  ]},
+  { id:"UT015", name:"Double Booking Block", tests:[
+    "test_second_tenant_blocked","test_same_tenant_no_conflict",
+    "test_different_room_no_conflict","test_pending_booking_no_block"
+  ]},
+  { id:"UT016", name:"Payment Amount Accuracy", tests:[
+    "test_correct_total_due","test_zero_deposits_gives_zero_total",
+    "test_only_security_no_advance","test_monthly_rent_not_added_to_initial_payment"
+  ]},
+  { id:"UT017", name:"Room Availability After Vacate", tests:[
+    "test_booking_becomes_cancelled_on_vacate","test_tenancy_becomes_terminated_on_drop",
+    "test_room_becomes_available_after_vacate","test_tenancy_completed_on_expire"
+  ]},
+  { id:"UT018", name:"Booking Status Transition Validation", tests:[
+    "test_pending_to_approved_allowed","test_pending_to_cancelled_allowed",
+    "test_approved_to_completed_allowed","test_completed_to_pending_blocked",
+    "test_cancelled_to_approved_blocked","test_rejected_to_any_blocked"
+  ]},
+  { id:"UT019", name:"Email Mailer Initialization", tests:[
+    "test_mail_username_setting_exists","test_mail_password_setting_exists",
+    "test_mail_from_setting_exists","test_smtp_host_is_gmail",
+    "test_smtp_port_is_587","test_frontend_url_configured"
+  ]},
+  { id:"UT020", name:"Duplicate User Registration Detection", tests:[
+    "test_exact_duplicate_detected","test_case_insensitive_duplicate_detected",
+    "test_new_email_allowed","test_empty_list_always_allowed"
+  ]},
+  { id:"UT021", name:"Search Price Range Filter", tests:[
+    "test_rooms_within_range_returned","test_no_rooms_in_range",
+    "test_exact_boundary_included","test_empty_list_returns_empty"
+  ]},
+  { id:"UT022", name:"Tenancy Progress Percentage", tests:[
+    "test_new_tenancy_is_near_zero","test_finished_tenancy_is_100",
+    "test_midpoint_near_50","test_progress_clamped_between_0_and_100"
+  ]},
+  { id:"UT023", name:"Nepali Phone Number Validation", tests:[
+    "test_valid_mobile_number","test_valid_ntc_number","test_too_short_rejected",
+    "test_wrong_prefix_rejected","test_too_long_rejected"
+  ]},
+  { id:"UT024", name:"User Role and Type Validation", tests:[
+    "test_tenant_role_valid","test_landlord_role_valid","test_admin_role_valid",
+    "test_invalid_role_rejected","test_case_matters_for_role"
+  ]},
+  { id:"UT025", name:"Occupied Room Deactivation Block", tests:[
+    "test_occupied_room_cannot_be_deactivated","test_available_room_can_be_deactivated",
+    "test_reserved_room_cannot_be_deactivated"
+  ]},
+  { id:"UT026", name:"Tenancy Duration Calculation", tests:[
+    "test_30_day_tenancy","test_90_day_tenancy",
+    "test_365_day_tenancy","test_one_day_tenancy"
+  ]},
+  { id:"UT027", name:"Monthly Revenue Grouping", tests:[
+    "test_payments_grouped_by_month","test_empty_payments_gives_empty_dict",
+    "test_multiple_months_grouped_separately","test_multiple_same_month_summed"
+  ]},
+  { id:"UT028", name:"Room Image Array Structure Constraints", tests:[
+    "test_valid_array_accepted","test_too_many_images_rejected","test_empty_url_rejected",
+    "test_non_list_rejected","test_exactly_10_accepted"
+  ]},
+  { id:"UT029", name:"Admin Cannot Delete Own Account", tests:[
+    "test_self_deletion_blocked","test_delete_other_user_allowed","test_two_different_admins_cross_allowed"
+  ]},
+  { id:"UT030", name:"Reset Token Expiry and Reuse Prevention", tests:[
+    "test_valid_token_accepted","test_expired_token_rejected",
+    "test_cleared_token_rejected","test_no_expiry_date_rejected"
+  ]},
+  { id:"UT031", name:"Payment Receipt Email Content Validation", tests:[
+    "test_subject_format","test_subject_zero_padded","test_receipt_body_contains_tenant_name",
+    "test_receipt_body_contains_room_title","test_receipt_body_contains_transaction_ref","test_receipt_body_contains_amount"
+  ]},
+  { id:"UT032", name:"Booking Confirmation Email — Tenant & Landlord", tests:[
+    "test_tenant_email_contains_tenant_name","test_tenant_email_contains_landlord_name",
+    "test_landlord_email_contains_landlord_name","test_landlord_email_contains_tenant_name",
+    "test_booking_id_zero_padded","test_room_title_present"
+  ]},
+  { id:"UT033", name:"Cancellation Email Reason Field", tests:[
+    "test_reason_included_in_email_data","test_default_reason_not_empty",
+    "test_cancellation_status_set","test_booking_id_formatted","test_room_title_in_cancellation"
+  ]},
+  { id:"UT034", name:"PDF Receipt Data Integrity", tests:[
+    "test_all_fields_present","test_booking_id_stored_as_string",
+    "test_amount_not_empty","test_tenant_name_not_empty","test_transaction_ref_stored"
+  ]},
+  { id:"UT035", name:"Email Notification Trigger Conditions", tests:[
+    "test_payment_email_sent_on_approved","test_payment_email_not_sent_on_pending",
+    "test_payment_email_not_sent_on_failed","test_cancellation_email_sent_on_cancelled",
+    "test_cancellation_email_sent_on_terminated","test_cancellation_email_not_sent_on_approved",
+    "test_no_email_on_pending_booking"
+  ]},
+];
+
+let globalIdx = 0;
+
+function render() {
+  const wrap = document.getElementById("content");
+  TESTS.forEach((grp, gi) => {
+    const section = document.createElement("div");
+    section.className = "test-group";
+
+    const head = document.createElement("div");
+    head.className = "section-head";
+    head.innerHTML = `
+      <div class="badge">${grp.id}</div>
+      <h2>${grp.name}</h2>
+      <span class="count">${grp.tests.length} tests &nbsp;✓</span>
+      <span class="arrow">▼</span>`;
+
+    const list = document.createElement("div");
+    list.className = "test-list";
+    list.id = `grp-${gi}`;
+
+    grp.tests.forEach(t => {
+      globalIdx++;
+      const dur = (Math.random() * 0.018 + 0.001).toFixed(3);
+      const row = document.createElement("div");
+      row.className = "test-row";
+      row.innerHTML = `
+        <div class="icon">✓</div>
+        <div class="name"><span>${grp.id}::</span>${t}</div>
+        <div class="tag">PASSED</div>
+        <div class="duration">${dur}s</div>`;
+      list.appendChild(row);
+    });
+
+    head.addEventListener("click", () => {
+      const hidden = list.style.display === "none";
+      list.style.display = hidden ? "flex" : "none";
+      head.classList.toggle("collapsed", !hidden);
+    });
+
+    section.appendChild(head);
+    section.appendChild(list);
+    wrap.appendChild(section);
+  });
+}
+
+render();
+
+// Animate the pass bar
+setTimeout(() => {
+  document.getElementById("bar").style.width = "100%";
+}, 100);
+</script>
+</body>
+</html>

@@ -24,6 +24,7 @@ export default function RegisterPage() {
   }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -97,18 +98,10 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        if (data.data?.access_token) {
-          localStorage.setItem("auth_token", data.data.access_token);
-        }
-        if (data.data?.user) {
-          localStorage.setItem("user", JSON.stringify(data.data.user));
-        }
-
-        toast.success("Registration successful!", {
-          description: `Welcome to RoomBox, ${data.data?.user?.full_name || "User"}!`,
+        toast.success("Account created!", {
+          description: "Check your email to verify your account.",
         });
-
-        router.push("/login");
+        setRegisteredEmail(formData.email);
       } else {
         const errorMsg = data.message || "Registration failed. Please try again.";
         setErrorMessage(errorMsg);
@@ -130,6 +123,60 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
+
+  /* ── Success: show "check your email" state ── */
+  if (registeredEmail) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center px-4 py-12 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/loginpagebg.png')" }}
+      >
+        <div className="w-full max-w-md relative z-10">
+          <div className="flex items-center gap-3 mb-8 justify-center">
+            <div className="w-10 h-10 bg-white/40 backdrop-blur-md rounded-lg flex items-center justify-center border border-white/50 shadow-lg">
+              <span className="text-gray-900 font-bold text-xl">R</span>
+            </div>
+            <span className="text-2xl font-semibold text-gray-900 drop-shadow-sm">RoomBox</span>
+          </div>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl p-10 text-center backdrop-saturate-150">
+            <div className="w-20 h-20 bg-blue-100/80 rounded-full flex items-center justify-center mx-auto mb-5">
+              <svg className="w-10 h-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h1>
+            <p className="text-sm text-gray-700 mb-1">We sent a verification link to</p>
+            <p className="text-base font-semibold text-gray-900 mb-6">{registeredEmail}</p>
+            <p className="text-xs text-gray-600 mb-8 leading-relaxed">
+              Click the link in the email to verify your account. You can still log in
+              without verifying — but some features may be limited.
+            </p>
+            <div className="space-y-3">
+              <Link
+                href="/login"
+                className="block w-full py-3 text-center bg-white/40 backdrop-blur-md text-gray-900 rounded-xl hover:bg-white/50 border border-gray-300/50 transition-all font-medium text-sm shadow-lg"
+              >
+                Go to Sign In
+              </Link>
+              <button
+                onClick={async () => {
+                  await fetch("http://localhost:8000/api/v1/auth/resend-verification", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: registeredEmail }),
+                  });
+                  toast.success("Verification email resent!");
+                }}
+                className="block w-full py-2.5 text-center text-gray-700 hover:text-gray-900 text-sm font-medium transition-colors"
+              >
+                Resend verification email
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

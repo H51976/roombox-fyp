@@ -79,11 +79,19 @@ class Room(Base):
     has_elevator = Column(Boolean, default=False, nullable=False)
     has_balcony = Column(Boolean, default=False, nullable=False)
     
+    # Tenancy duration (set by landlord — how many days the booking lasts)
+    tenancy_duration_days = Column(Integer, nullable=True)
+
     # Status
     status = Column(SQLEnum(RoomStatus), default=RoomStatus.AVAILABLE, nullable=False, index=True)
     is_verified = Column(Boolean, default=False, nullable=False)
     is_featured = Column(Boolean, default=False, nullable=False)
-    
+
+    # Admin deactivation (cannot be undone by landlord)
+    admin_deactivated = Column(Boolean, default=False, nullable=False)
+    admin_deactivation_reason = Column(Text, nullable=True)
+    admin_deactivated_at = Column(DateTime(timezone=True), nullable=True)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

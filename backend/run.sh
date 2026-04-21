@@ -16,7 +16,7 @@ source venv/bin/activate
 
 # Install dependencies
 echo "📥 Installing dependencies..."
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 
 # Create logs directory
 mkdir -p logs
@@ -26,5 +26,5 @@ echo "✅ Starting server on http://localhost:8000"
 echo "📚 Swagger UI available at http://localhost:8000/docs"
 echo "📖 ReDoc available at http://localhost:8000/redoc"
 echo ""
-python main.py
+python3 main.py
 

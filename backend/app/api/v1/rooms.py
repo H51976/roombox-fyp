@@ -8,6 +8,7 @@ from app.utils.response import success_response, error_response
 from app.database import get_db
 from app.models.room import Room, RoomType, RoomStatus, FurnishingStatus, RoomImage
 from app.models.user import User
+from app.models.booking import Booking, BookingStatus
 
 router = APIRouter()
 
@@ -40,6 +41,7 @@ class RoomCreateRequest(BaseModel):
     has_elevator: bool = False
     has_balcony: bool = False
     images: Optional[List[str]] = Field(None, description="List of base64 encoded images")
+    tenancy_duration_days: Optional[int] = Field(None, ge=1, description="How many days the tenancy lasts (set by landlord)")
 
 
 class StatusUpdateRequest(BaseModel):
@@ -166,6 +168,7 @@ async def create_room(
         has_balcony=room_data.has_balcony,
         status=RoomStatus.AVAILABLE,
         is_verified=False,
+        tenancy_duration_days=room_data.tenancy_duration_days,
     )
     
     try:
@@ -249,27 +252,55 @@ async def get_my_listings(
     rooms = db.query(Room).filter(Room.owner_id == landlord.id).order_by(Room.created_at.desc()).offset(offset).limit(limit).all()
     
     total_pages = math.ceil(total_count / limit) if limit > 0 else 1
-    
+
+    from datetime import datetime as dt
+
+    def _room_listing(room):
+        # Attach active tenant info for occupied rooms
+        active_booking = db.query(Booking).filter(
+            Booking.room_id == room.id,
+            Booking.status == BookingStatus.APPROVED,
+        ).first()
+        tenant_info = None
+        days_remaining = None
+        is_tenant_expired = False
+        if active_booking:
+            tenant = db.query(User).filter(User.id == active_booking.tenant_id).first()
+            tenant_info = {
+                "name": (tenant.full_name or tenant.email) if tenant else "Unknown",
+                "start_date": active_booking.start_date.isoformat() if active_booking.start_date else None,
+                "end_date": active_booking.end_date.isoformat() if active_booking.end_date else None,
+            }
+            if active_booking.end_date:
+                delta = (active_booking.end_date.replace(tzinfo=None) - dt.utcnow()).days
+                days_remaining = max(delta, 0)
+                is_tenant_expired = delta < 0
+        return {
+            "id": room.id,
+            "title": room.title,
+            "description": room.description,
+            "room_type": room.room_type.value,
+            "city": room.city,
+            "address": room.address,
+            "price_per_month": room.price_per_month,
+            "total_rooms": room.total_rooms,
+            "available_rooms": room.available_rooms,
+            "bathrooms": room.bathrooms,
+            "status": room.status.value,
+            "is_verified": room.is_verified,
+            "admin_deactivated": getattr(room, "admin_deactivated", False),
+            "admin_deactivation_reason": getattr(room, "admin_deactivation_reason", None),
+            "admin_deactivated_at": room.admin_deactivated_at.isoformat() if getattr(room, "admin_deactivated_at", None) else None,
+            "tenancy_duration_days": room.tenancy_duration_days,
+            "created_at": room.created_at.isoformat() if room.created_at else None,
+            "active_tenant": tenant_info,
+            "tenant_days_remaining": days_remaining,
+            "is_tenant_expired": is_tenant_expired,
+        }
+
     return success_response(
         data={
-            "listings": [
-                {
-                    "id": room.id,
-                    "title": room.title,
-                    "description": room.description,
-                    "room_type": room.room_type.value,
-                    "city": room.city,
-                    "address": room.address,
-                    "price_per_month": room.price_per_month,
-                    "total_rooms": room.total_rooms,
-                    "available_rooms": room.available_rooms,
-                    "bathrooms": room.bathrooms,
-                    "status": room.status.value,
-                    "is_verified": room.is_verified,
-                    "created_at": room.created_at.isoformat() if room.created_at else None,
-                }
-                for room in rooms
-            ],
+            "listings": [_room_listing(room) for room in rooms],
             "pagination": {
                 "page": page,
                 "limit": limit,
@@ -310,6 +341,11 @@ async def search_rooms(
     has_kitchen: Optional[bool] = Query(None),
     has_parking: Optional[bool] = Query(None),
     has_wifi: Optional[bool] = Query(None),
+    has_water_supply: Optional[bool] = Query(None),
+    has_electricity: Optional[bool] = Query(None),
+    has_security: Optional[bool] = Query(None),
+    has_elevator: Optional[bool] = Query(None),
+    has_balcony: Optional[bool] = Query(None),
     furnishing_status: Optional[str] = Query(None),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(12, ge=1, le=100, description="Items per page"),
@@ -345,7 +381,17 @@ async def search_rooms(
         query = query.filter(Room.has_parking == has_parking)
     if has_wifi is not None:
         query = query.filter(Room.has_wifi == has_wifi)
-    
+    if has_water_supply is not None:
+        query = query.filter(Room.has_water_supply == has_water_supply)
+    if has_electricity is not None:
+        query = query.filter(Room.has_electricity == has_electricity)
+    if has_security is not None:
+        query = query.filter(Room.has_security == has_security)
+    if has_elevator is not None:
+        query = query.filter(Room.has_elevator == has_elevator)
+    if has_balcony is not None:
+        query = query.filter(Room.has_balcony == has_balcony)
+
     # Filter by furnishing status
     if furnishing_status:
         try:
@@ -498,6 +544,7 @@ async def get_room(
             "has_elevator": room.has_elevator,
             "has_balcony": room.has_balcony,
             "status": room.status.value,
+            "tenancy_duration_days": room.tenancy_duration_days,
             "images": [img.image_url for img in images],
             "owner": {
                 "id": owner.id if owner else None,
@@ -661,7 +708,8 @@ async def update_room_status(
     db: Session = Depends(get_db),
 ):
     """
-    Update room status (available, occupied, reserved)
+    Update room status (available, occupied, reserved).
+    Blocked if admin has deactivated the room.
     """
     room = db.query(Room).filter(Room.id == room_id).first()
     
@@ -669,6 +717,13 @@ async def update_room_status(
         return error_response(
             message="Room listing not found",
             status_code=status.HTTP_404_NOT_FOUND
+        )
+
+    # Block landlord from changing status on admin-deactivated rooms
+    if getattr(room, "admin_deactivated", False):
+        return error_response(
+            message="This listing has been deactivated by the admin and cannot be modified.",
+            status_code=status.HTTP_403_FORBIDDEN
         )
     
     # If no status provided, toggle between available and occupied

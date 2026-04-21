@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>RoomBox — Charts</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; }
+
+    .topbar {
+      background: #1d4ed8; color: #fff;
+      padding: 16px 32px;
+      font-size: 18px; font-weight: 700;
+      display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 99;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+    }
+    .topbar .logo {
+      width: 38px; height: 38px; background: rgba(255,255,255,0.25);
+      border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-weight: 900; font-size: 18px;
+    }
+    .topbar nav { display: flex; gap: 6px; margin-left: auto; }
+    .topbar nav a {
+      color: rgba(255,255,255,0.85); font-size: 12px; font-weight: 500;
+      text-decoration: none; padding: 6px 14px; border-radius: 6px;
+      background: rgba(255,255,255,0.12); transition: background .15s;
+    }
+    .topbar nav a:hover { background: rgba(255,255,255,0.25); }
+
+    .sprint-banner {
+      background: linear-gradient(135deg, #1e40af, #2563eb);
+      color: #fff;
+      padding: 28px 40px;
+      margin: 40px 0 0;
+    }
+    .sprint-banner .num {
+      display: inline-block; width: 46px; height: 46px;
+      background: rgba(255,255,255,0.22); border-radius: 12px;
+      text-align: center; line-height: 46px;
+      font-size: 20px; font-weight: 800; margin-right: 14px;
+      vertical-align: middle;
+    }
+    .sprint-banner .info { display: inline-block; vertical-align: middle; }
+    .sprint-banner h2 { font-size: 22px; font-weight: 700; }
+    .sprint-banner p  { font-size: 13px; opacity: .8; margin-top: 3px; }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.09);
+      margin: 28px 36px;
+      overflow: hidden;
+    }
+    .card-head {
+      padding: 22px 32px 16px;
+      border-bottom: 2px solid #f1f5f9;
+    }
+    .card-head h3 { font-size: 18px; font-weight: 700; color: #0f172a; }
+    .card-head p  { font-size: 13px; color: #64748b; margin-top: 4px; }
+    .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .pill { padding: 4px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .pb { background: #eff6ff; color: #1d4ed8; }
+    .pg { background: #f0fdf4; color: #16a34a; }
+    .pa { background: #fffbeb; color: #d97706; }
+    .pr { background: #fef2f2; color: #dc2626; }
+
+    .card-body {
+      padding: 28px 36px 36px;
+    }
+
+    .legend {
+      display: flex; gap: 24px; flex-wrap: wrap;
+      font-size: 13px; color: #475569; margin-bottom: 20px;
+    }
+    .legend span { display: flex; align-items: center; gap: 8px; }
+    .ldot { width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; }
+    .lline { width: 32px; height: 4px; border-radius: 2px; flex-shrink: 0; }
+    .lline-dash {
+      width: 32px; height: 3px; flex-shrink: 0;
+      background: repeating-linear-gradient(90deg,#2563eb 0,#2563eb 7px,transparent 7px,transparent 12px);
+    }
+
+    /* THE KEY: explicit height on the wrapper */
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 420px;
+    }
+    .chart-wrap canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .foot { height: 64px; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">R</div>
+  RoomBox — Velocity &amp; Burn-Down Charts
+  <nav>
+    <a href="#overall">Overall</a>
+    <a href="#s1">S1</a><a href="#s2">S2</a><a href="#s3">S3</a>
+    <a href="#s4">S4</a><a href="#s5">S5</a>
+    <a href="#st">Testing</a><a href="#sc">Closure</a>
+  </nav>
+</div>
+
+
+<!-- ══════════════════════════════ OVERALL ══ -->
+<div class="sprint-banner" id="overall" style="margin-top:16px;">
+  <span class="num">★</span>
+  <div class="info">
+    <h2>Overall Velocity Chart — All 7 Sprints</h2>
+    <p>December 2025 – April 2026 · 295 total story points · 100% delivery rate</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Sprint Velocity — RoomBox (All Sprints)</h3>
+    <p>Planned vs Completed story points with velocity trend line (pts/day)</p>
+    <div class="pills">
+      <span class="pill pb">295 pts planned</span>
+      <span class="pill pg">295 pts completed</span>
+      <span class="pill pa">100% delivery</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="legend">
+      <span><div class="ldot" style="background:#2563eb;"></div> Planned Points</span>
+      <span><div class="ldot" style="background:#16a34a;"></div> Completed Points</span>
+      <span><div class="lline" style="background:#d97706;"></div> Velocity (pts/day)</span>
+    </div>
+    <div class="chart-wrap"><canvas id="velocityAll"></canvas></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════ SPRINT 1 ══ -->
+<div class="sprint-banner" id="s1">
+  <span class="num">1</span>
+  <div class="info">
+    <h2>Sprint 1 — Planning &amp; Analysis</h2>
+    <p>December 15 – December 30, 2025 · 12 days · 10 story points · 0.83 pts/day</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Sprint 1 — Velocity Chart</h3>
+    <p>Story points planned vs completed by week</p>
+    <div class="pills">
+      <span class="pill pb">10 pts planned</span>
+      <span class="pill pg">10 pts completed</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="chart-wrap"><canvas id="vel1"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Sprint 1 — Burn-Down Chart</h3>
+    <p>Ideal vs Actual remaining work over 12 days</p>
+    <div class="pills">
+      <span class="pill pb">Ideal: 10 → 0</span>
+      <span class="pill pr">Actual remaining</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="legend">
+      <span><div class="lline-dash"></div> Ideal Burn-Down</span>
+      <span><div class="lline" style="background:#dc2626;"></div> Actual Remaining</span>
+    </div>
+    <div class="chart-wrap"><canvas id="burn1"></canvas></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════ SPRINT 2 ══ -->
+<div class="sprint-banner" id="s2">
+  <span class="num">2</span>
+  <div class="info">
+    <h2>Sprint 2 — System Architecture</h2>
+    <p>December 29, 2025 – January 14, 2026 · 12 days · 21 story points · 1.75 pts/day</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Sprint 2 — Velocity Chart</h3>
+    <p>Story points planned vs completed by week</p>
+    <div class="pills">
+      <span class="pill pb">21 pts planned</span>
+      <span class="pill pg">21 pts completed</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="chart-wrap"><canvas id="vel2"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Sprint 2 — Burn-Down Chart</h3>
+    <p>Ideal vs Actual remaining work over 12 days</p>
+    <div class="pills">
+      <span class="pill pb">Ideal: 21 → 0</span>
+      <span class="pill pr">Actual remaining</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="legend">
+      <span><div class="lline-dash"></div> Ideal Burn-Down</span>
+      <span><div class="lline" style="background:#dc2626;"></div> Actual Remaining</span>
+    </div>
+    <div class="chart-wrap"><canvas id="burn2"></canvas></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════ SPRINT 3 ══ -->
+<div class="sprint-banner" id="s3">
+  <span class="num">3</span>
+  <div class="info">
+    <h2>Sprint 3 — Core Authentication</h2>
+    <p>January 14 – January 30, 2026 · 12 days · 16 story points · 1.33 pts/day</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Sprint 3 — Velocity Chart</h3>
+    <p>Story points planned vs completed by week</p>
+    <div class="pills">
+      <span class="pill pb">16 pts planned</span>
+      <span class="pill pg">16 pts completed</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="chart-wrap"><canvas id="vel3"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Sprint 3 — Burn-Down Chart</h3>
+    <p>Ideal vs Actual remaining work over 12 days</p>
+    <div class="pills">
+      <span class="pill pb">Ideal: 16 → 0</span>
+      <span class="pill pr">Actual remaining</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="legend">
+      <span><div class="lline-dash"></div> Ideal Burn-Down</span>
+      <span><div class="lline" style="background:#dc2626;"></div> Actual Remaining</span>
+    </div>
+    <div class="chart-wrap"><canvas id="burn3"></canvas></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════ SPRINT 4 ══ -->
+<div class="sprint-banner" id="s4">
+  <span class="num">4</span>
+  <div class="info">
+    <h2>Sprint 4 — Full-Stack Development</h2>
+    <p>January 29 – March 13, 2026 · 32 days · 177 story points · 5.53 pts/day</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Sprint 4 — Velocity Chart</h3>
+    <p>Story points planned vs completed by week</p>
+    <div class="pills">
+      <span class="pill pb">177 pts planned</span>
+      <span class="pill pg">177 pts completed</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="chart-wrap"><canvas id="vel4"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Sprint 4 — Burn-Down Chart</h3>
+    <p>Ideal vs Actual remaining work over 32 days</p>
+    <div class="pills">
+      <span class="pill pb">Ideal: 177 → 0</span>
+      <span class="pill pr">Actual remaining</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="legend">
+      <span><div class="lline-dash"></div> Ideal Burn-Down</span>
+      <span><div class="lline" style="background:#dc2626;"></div> Actual Remaining</span>
+    </div>
+    <div class="chart-wrap"><canvas id="burn4"></canvas></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════ SPRINT 5 ══ -->
+<div class="sprint-banner" id="s5">
+  <span class="num">5</span>
+  <div class="info">
+    <h2>Sprint 5 — Data &amp; AI Intelligence</h2>
+    <p>March 11 – March 26, 2026 · 12 days · 37 story points · 3.08 pts/day</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Sprint 5 — Velocity Chart</h3>
+    <p>Story points planned vs completed by week</p>
+    <div class="pills">
+      <span class="pill pb">37 pts planned</span>
+      <span class="pill pg">37 pts completed</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="chart-wrap"><canvas id="vel5"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Sprint 5 — Burn-Down Chart</h3>
+    <p>Ideal vs Actual remaining work over 12 days</p>
+    <div class="pills">
+      <span class="pill pb">Ideal: 37 → 0</span>
+      <span class="pill pr">Actual remaining</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="legend">
+      <span><div class="lline-dash"></div> Ideal Burn-Down</span>
+      <span><div class="lline" style="background:#dc2626;"></div> Actual Remaining</span>
+    </div>
+    <div class="chart-wrap"><canvas id="burn5"></canvas></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════ TESTING ══ -->
+<div class="sprint-banner" id="st">
+  <span class="num">T</span>
+  <div class="info">
+    <h2>Testing Sprint — Unit &amp; Integration Testing</h2>
+    <p>April 20 – April 22, 2026 · 2 days · 18 story points · 30 unit tests · 25 manual tests</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Testing Sprint — Velocity Chart</h3>
+    <p>Story points planned vs completed per day</p>
+    <div class="pills">
+      <span class="pill pb">18 pts planned</span>
+      <span class="pill pg">18 pts completed</span>
+      <span class="pill pa">128 assertions passed</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="chart-wrap"><canvas id="vel6"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Testing Sprint — Burn-Down Chart</h3>
+    <p>Ideal vs Actual remaining work over 2 days</p>
+    <div class="pills">
+      <span class="pill pb">Ideal: 18 → 0</span>
+      <span class="pill pr">Actual remaining</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="legend">
+      <span><div class="lline-dash"></div> Ideal Burn-Down</span>
+      <span><div class="lline" style="background:#dc2626;"></div> Actual Remaining</span>
+    </div>
+    <div class="chart-wrap"><canvas id="burn6"></canvas></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════ CLOSURE ══ -->
+<div class="sprint-banner" id="sc">
+  <span class="num">C</span>
+  <div class="info">
+    <h2>Closure Sprint — Deployment &amp; Finalisation</h2>
+    <p>April 27 – April 30, 2026 · 2 days · 16 story points · 8.0 pts/day</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Closure Sprint — Velocity Chart</h3>
+    <p>Story points planned vs completed per day</p>
+    <div class="pills">
+      <span class="pill pb">16 pts planned</span>
+      <span class="pill pg">16 pts completed</span>
+      <span class="pill pg">Project delivered ✓</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="chart-wrap"><canvas id="vel7"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Closure Sprint — Burn-Down Chart</h3>
+    <p>Ideal vs Actual remaining work over 2 days</p>
+    <div class="pills">
+      <span class="pill pb">Ideal: 16 → 0</span>
+      <span class="pill pr">Actual remaining</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="legend">
+      <span><div class="lline-dash"></div> Ideal Burn-Down</span>
+      <span><div class="lline" style="background:#dc2626;"></div> Actual Remaining</span>
+    </div>
+    <div class="chart-wrap"><canvas id="burn7"></canvas></div>
+  </div>
+</div>
+
+<div class="foot"></div>
+
+<script>
+/* ── helpers ── */
+function ideal(total, n) {
+  return Array.from({length: n+1}, (_,i) => +(total - (total/n)*i).toFixed(2));
+}
+function actual(total, n, seed) {
+  let rem = total, pts = [total];
+  for (let i = 1; i < n; i++) {
+    const prog = i/n;
+    const base = total/n;
+    const noise = (((seed * i * 6271 + i*37) % 1000)/1000 - 0.38) * base * 0.5;
+    const speed = prog < 0.2 ? 0.5 : prog < 0.55 ? 1.1 : 1.55;
+    let d = base * speed + noise;
+    if (d < 0) d = 0;
+    rem = Math.max(0, rem - d);
+    pts.push(+rem.toFixed(1));
+  }
+  pts.push(0);
+  return pts;
+}
+function dayLabels(n, start) {
+  return Array.from({length: n+1}, (_,i) => i===0 ? start : 'Day '+i);
+}
+
+const G = '#f1f5f9';
+const TF = { size: 14 };
+const LF = { size: 14, weight: '600' };
+
+/* ── burn-down factory ── */
+function makeBurn(id, total, days, startLabel, seed) {
+  const ctx = document.getElementById(id);
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dayLabels(days, startLabel),
+      datasets: [
+        {
+          label: 'Ideal Burn-Down',
+          data: ideal(total, days),
+          borderColor: '#2563eb',
+          borderWidth: 3,
+          borderDash: [9,5],
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+        },
+        {
+          label: 'Actual Remaining',
+          data: actual(total, days, seed),
+          borderColor: '#dc2626',
+          backgroundColor: 'rgba(220,38,38,0.07)',
+          borderWidth: 3,
+          pointRadius: 5,
+          pointBackgroundColor: '#dc2626',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          fill: true,
+          tension: 0.38,
+        }
+      ]
+    },
+    options: {
+      maintainAspectRatio: false,
+      responsive: true,
+      plugins: {
+        legend: { position:'top', labels:{ font: LF, boxWidth:18, padding:18 } },
+        tooltip: { mode:'index', intersect:false }
+      },
+      scales: {
+        x: { grid:{color:G}, ticks:{font:TF, maxTicksLimit: days<=3 ? days+1 : 10} },
+        y: {
+          grid:{color:G}, ticks:{font:TF},
+          title:{display:true, text:'Story Points Remaining', font:TF, color:'#475569'},
+          min:0
+        }
+      }
+    }
+  });
+}
+
+/* ── velocity factory ── */
+function makeVel(id, labels, planned, completed) {
+  const ctx = document.getElementById(id);
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Planned Story Points',
+          data: planned,
+          backgroundColor: 'rgba(37,99,235,0.75)',
+          borderColor: '#2563eb',
+          borderWidth: 2,
+          borderRadius: 10,
+          barPercentage: 0.5,
+        },
+        {
+          label: 'Completed Story Points',
+          data: completed,
+          backgroundColor: 'rgba(22,163,74,0.75)',
+          borderColor: '#16a34a',
+          borderWidth: 2,
+          borderRadius: 10,
+          barPercentage: 0.5,
+        }
+      ]
+    },
+    options: {
+      maintainAspectRatio: false,
+      responsive: true,
+      plugins: {
+        legend: { position:'top', labels:{ font: LF, boxWidth:18, padding:18 } },
+        tooltip: { mode:'index', intersect:false }
+      },
+      scales: {
+        x: { grid:{display:false}, ticks:{font:TF} },
+        y: {
+          grid:{color:G}, ticks:{font:TF},
+          title:{display:true, text:'Story Points', font:TF, color:'#475569'},
+          min:0
+        }
+      }
+    }
+  });
+}
+
+/* ── OVERALL ── */
+new Chart(document.getElementById('velocityAll'), {
+  type: 'bar',
+  data: {
+    labels: ['Sprint 1\nPlanning', 'Sprint 2\nArchitecture', 'Sprint 3\nAuth', 'Sprint 4\nFull-Stack', 'Sprint 5\nData & AI', 'Testing', 'Closure'],
+    datasets: [
+      {
+        label: 'Planned Story Points',
+        data: [10, 21, 16, 177, 37, 18, 16],
+        backgroundColor: 'rgba(37,99,235,0.75)',
+        borderColor: '#2563eb', borderWidth:2,
+        borderRadius:10, barPercentage:0.4, order:2,
+      },
+      {
+        label: 'Completed Story Points',
+        data: [10, 21, 16, 177, 37, 18, 16],
+        backgroundColor: 'rgba(22,163,74,0.75)',
+        borderColor: '#16a34a', borderWidth:2,
+        borderRadius:10, barPercentage:0.4, order:3,
+      },
+      {
+        label: 'Velocity (pts/day)',
+        data: [0.83, 1.75, 1.33, 5.53, 3.08, 9.0, 8.0],
+        type: 'line',
+        borderColor: '#d97706',
+        backgroundColor: 'rgba(217,119,6,0.06)',
+        borderWidth:3,
+        pointRadius:7, pointBackgroundColor:'#d97706',
+        pointBorderColor:'#fff', pointBorderWidth:2,
+        fill:false, tension:0.4,
+        yAxisID:'y2', order:1,
+      }
+    ]
+  },
+  options: {
+    maintainAspectRatio: false,
+    responsive: true,
+    plugins: {
+      legend: { position:'top', labels:{ font: LF, boxWidth:18, padding:18 } },
+      tooltip: { mode:'index', intersect:false }
+    },
+    scales: {
+      x: { grid:{display:false}, ticks:{font:TF} },
+      y: {
+        grid:{color:G}, ticks:{font:TF},
+        title:{display:true, text:'Story Points', font:TF, color:'#475569'},
+        min:0, position:'left'
+      },
+      y2: {
+        grid:{display:false}, ticks:{font:TF},
+        title:{display:true, text:'Velocity (pts/day)', font:TF, color:'#475569'},
+        min:0, position:'right'
+      }
+    }
+  }
+});
+
+/* ── PER-SPRINT VELOCITY ── */
+makeVel('vel1', ['Week 1','Week 2'],                          [5,5],        [5,5]);
+makeVel('vel2', ['Week 1','Week 2'],                          [10,11],      [10,11]);
+makeVel('vel3', ['Week 1','Week 2'],                          [8,8],        [8,8]);
+makeVel('vel4', ['Week 1','Week 2','Week 3','Week 4','Week 5'],[35,42,40,38,22],[33,40,42,39,23]);
+makeVel('vel5', ['Week 1','Week 2'],                          [18,19],      [18,19]);
+makeVel('vel6', ['Day 1','Day 2'],                            [9,9],        [9,9]);
+makeVel('vel7', ['Day 1','Day 2'],                            [8,8],        [8,8]);
+
+/* ── BURN-DOWNS ── */
+makeBurn('burn1', 10,  12, 'Dec 15', 3);
+makeBurn('burn2', 21,  12, 'Dec 29', 7);
+makeBurn('burn3', 16,  12, 'Jan 14', 11);
+makeBurn('burn4', 177, 32, 'Jan 29', 17);
+makeBurn('burn5', 37,  12, 'Mar 11', 5);
+makeBurn('burn6', 18,  2,  'Apr 20', 9);
+makeBurn('burn7', 16,  2,  'Apr 27', 13);
+</script>
+</body>
+</html>

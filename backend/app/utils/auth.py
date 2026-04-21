@@ -80,8 +80,8 @@ def decode_access_token(token: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
-    except jwt.ExpiredSignatureError:
+    except jwt.PyJWTError:
         return None
-    except jwt.JWTError:
+    except Exception:
         return None
 
