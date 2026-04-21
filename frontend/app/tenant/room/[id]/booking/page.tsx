@@ -11,6 +11,7 @@ interface Room {
   price_per_month: number;
   security_deposit?: number;
   advance_payment?: number;
+  tenancy_duration_days?: number;
   owner?: {
     id: number;
     full_name?: string;
@@ -28,7 +29,6 @@ export default function BookingPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [formData, setFormData] = useState({
     start_date: "",
-    end_date: "",
     tenant_message: "",
   });
 
@@ -100,15 +100,17 @@ export default function BookingPage() {
 
     setIsSubmitting(true);
     try {
+      const token = localStorage.getItem("auth_token") || "";
       const response = await fetch("http://localhost:8000/api/v1/bookings/request", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           room_id: parseInt(roomId),
           start_date: formData.start_date + "T00:00:00Z",
-          end_date: formData.end_date ? formData.end_date + "T00:00:00Z" : null,
+          end_date: null,
           tenant_message: formData.tenant_message || null,
         }),
       });
@@ -116,16 +118,22 @@ export default function BookingPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Payment is required - redirect to eSewa payment page
+        // Save payment_id and booking_id to localStorage BEFORE redirecting to eSewa.
+        // eSewa appends "?data=BASE64" to whatever success/failure URL we give it.
+        // If our URL already had query params (?payment_id=X&booking_id=Y), eSewa would
+        // produce "?payment_id=X&booking_id=Y?data=..." which is broken (double ?).
+        // So we keep our success/failure URLs clean and store the IDs in localStorage.
+        localStorage.setItem("esewa_payment_id", String(data.data.payment_id));
+        localStorage.setItem("esewa_booking_id", String(data.data.booking_id));
+        if (room?.title) localStorage.setItem("esewa_room_title", room.title);
+
         const formData_payment = data.data.form_data;
         const formUrl = data.data.form_url;
 
-        // Create a form and submit it to eSewa
         const form = document.createElement("form");
         form.method = "POST";
         form.action = formUrl;
-        
-        // Add all form fields
+
         Object.keys(formData_payment).forEach((key) => {
           const input = document.createElement("input");
           input.type = "hidden";
@@ -133,13 +141,12 @@ export default function BookingPage() {
           input.value = formData_payment[key];
           form.appendChild(input);
         });
-        
-        // Append form to body and submit
+
         document.body.appendChild(form);
         form.submit();
-        
-        toast.info("Redirecting to payment gateway...", {
-          description: "Please complete the payment to confirm your booking.",
+
+        toast.info("Redirecting to eSewa payment…", {
+          description: "Complete the payment to confirm your booking.",
         });
       } else {
         toast.error("Failed to submit booking request", {
@@ -257,18 +264,21 @@ export default function BookingPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                End Date (Optional - Leave blank for indefinite)
-              </label>
-              <input
-                type="date"
-                value={formData.end_date}
-                onChange={(e) => setFormData((prev) => ({ ...prev, end_date: e.target.value }))}
-                min={formData.start_date || new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              />
-            </div>
+            {room.tenancy_duration_days ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-md px-4 py-3 flex items-start gap-2">
+                <svg className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-blue-800">Tenancy Duration: {room.tenancy_duration_days} days</p>
+                  <p className="text-xs text-blue-600 mt-0.5">Your move-out date will be automatically set to {room.tenancy_duration_days} days from your start date.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-md px-4 py-3 text-sm text-gray-500">
+                No fixed duration set by landlord — this is an open-ended tenancy.
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -62,7 +62,7 @@ export default function RoomDetailPage() {
   const roomId = params.id as string;
   const [room, setRoom] = useState<Room | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [activeImg, setActiveImg] = useState(0);
   const [showChat, setShowChat] = useState(false);
   const [chatRoomId, setChatRoomId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -119,11 +119,10 @@ export default function RoomDetailPage() {
 
     try {
       // Create or get chat room
+      const tenantId = currentUser?.id;
       const response = await fetch(
-        `http://localhost:8000/api/v1/chat/rooms/create?landlord_id=${room.owner.id}&room_id=${roomId}`,
-        {
-          method: "POST",
-        }
+        `http://localhost:8000/api/v1/chat/rooms/create?landlord_id=${room.owner.id}&room_id=${roomId}${tenantId ? `&tenant_id=${tenantId}` : ""}`,
+        { method: "POST" }
       );
 
       const data = await response.json();
@@ -203,42 +202,84 @@ export default function RoomDetailPage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Images */}
+            {/* Image Carousel */}
             {room.images && room.images.length > 0 ? (
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="aspect-video bg-gray-100 relative">
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                {/* Main image */}
+                <div className="relative aspect-video bg-gray-100 group">
                   <img
-                    src={room.images[selectedImageIndex]}
-                    alt={room.title}
-                    className="w-full h-full object-cover"
+                    key={activeImg}
+                    src={room.images[activeImg]}
+                    alt={`${room.title} – photo ${activeImg + 1}`}
+                    className="w-full h-full object-cover transition-opacity duration-300"
                   />
-                </div>
-                {room.images.length > 1 && (
-                  <div className="p-4 grid grid-cols-4 gap-2">
-                    {room.images.map((image, index) => (
+
+                  {/* Prev / Next arrows */}
+                  {room.images.length > 1 && (
+                    <>
                       <button
-                        key={index}
-                        onClick={() => setSelectedImageIndex(index)}
-                        className={`aspect-video rounded-md overflow-hidden border-2 transition-colors ${
-                          selectedImageIndex === index
-                            ? "border-blue-600"
-                            : "border-gray-200 hover:border-gray-300"
+                        onClick={() => setActiveImg((i) => (i - 1 + room.images.length) % room.images.length)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Previous image"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setActiveImg((i) => (i + 1) % room.images.length)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Next image"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+
+                      {/* Counter pill */}
+                      <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full">
+                        {activeImg + 1} / {room.images.length}
+                      </div>
+
+                      {/* Dot indicators */}
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                        {room.images.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setActiveImg(i)}
+                            className={`w-2 h-2 rounded-full transition-all ${
+                              i === activeImg ? "bg-white w-4" : "bg-white/50 hover:bg-white/80"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Thumbnail strip (only if > 1 image) */}
+                {room.images.length > 1 && (
+                  <div className="p-3 flex gap-2 overflow-x-auto scrollbar-hide">
+                    {room.images.map((img, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setActiveImg(i)}
+                        className={`shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${
+                          i === activeImg
+                            ? "border-blue-600 ring-2 ring-blue-200"
+                            : "border-transparent hover:border-gray-300"
                         }`}
                       >
-                        <img
-                          src={image}
-                          alt={`${room.title} ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={img} alt={`thumb ${i + 1}`} className="w-full h-full object-cover" />
                       </button>
                     ))}
                   </div>
                 )}
               </div>
             ) : (
-              <div className="bg-white rounded-lg border border-gray-200 aspect-video flex items-center justify-center bg-gray-100">
-                <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <div className="bg-white rounded-xl border border-gray-200 aspect-video flex items-center justify-center">
+                <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
             )}
@@ -384,11 +425,8 @@ export default function RoomDetailPage() {
               {/* Owner Info */}
               {room.owner && (
                 <div className="pt-4 border-t border-gray-200">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Property Owner</h3>
-                  <p className="text-sm text-gray-700">{room.owner.full_name || "Landlord"}</p>
-                  {room.owner.phone && (
-                    <p className="text-sm text-gray-600 mt-1">{room.owner.phone}</p>
-                  )}
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Listed by</p>
+                  <p className="text-sm font-semibold text-gray-800">{room.owner.full_name || "Landlord"}</p>
                 </div>
               )}
 

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { io, Socket } from "socket.io-client";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 
 interface Message {
@@ -22,222 +21,156 @@ interface ChatProps {
   onClose: () => void;
 }
 
+const API = "http://localhost:8000/api/v1/chat";
+
 export default function Chat({ chatRoomId, currentUserId, otherUserName, roomTitle, onClose }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastIdRef = useRef<number>(0);
 
-  useEffect(() => {
-    // Initialize Socket.IO connection
-    const token = localStorage.getItem("auth_token");
-    const userStr = localStorage.getItem("user");
-    
-    if (!userStr) {
-      toast.error("Please login to chat");
-      onClose();
-      return;
-    }
-
-    let userData;
+  // Load full history once, then poll for new messages
+  const loadMessages = useCallback(async (full = false) => {
     try {
-      userData = JSON.parse(userStr);
-    } catch (error) {
-      toast.error("Invalid user data");
-      onClose();
-      return;
-    }
-
-    const newSocket = io("http://localhost:8000/socket.io", {
-      auth: {
-        user_id: userData.id || currentUserId,
-      },
-      transports: ["websocket", "polling"],
-    });
-
-    newSocket.on("connect", () => {
-      setIsConnected(true);
-      // Join the chat room
-      newSocket.emit("join_room", { chat_room_id: chatRoomId });
-    });
-
-    newSocket.on("disconnect", () => {
-      setIsConnected(false);
-    });
-
-    newSocket.on("new_message", (message: Message) => {
-      setMessages((prev) => [...prev, message]);
-      // Mark as read if it's from the other user
-      if (message.sender_id !== currentUserId) {
-        newSocket.emit("mark_read", { chat_room_id: chatRoomId });
-      }
-    });
-
-    newSocket.on("room_joined", () => {
-      // Load existing messages
-      loadMessages();
-    });
-
-    newSocket.on("error", (error: { message: string }) => {
-      toast.error(error.message || "Chat error");
-    });
-
-    setSocket(newSocket);
-
-    return () => {
-      newSocket.emit("leave_room", { chat_room_id: chatRoomId });
-      newSocket.close();
-    };
-  }, [chatRoomId, currentUserId, onClose]);
-
-  const loadMessages = async () => {
-    try {
-      const response = await fetch(`http://localhost:8000/api/v1/chat/rooms/${chatRoomId}/messages?limit=100`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setMessages(data.data || []);
-        // Mark messages as read
-        if (socket) {
-          socket.emit("mark_read", { chat_room_id: chatRoomId });
+      const url = full
+        ? `${API}/rooms/${chatRoomId}/messages?limit=100`
+        : `${API}/rooms/${chatRoomId}/messages?limit=20&after_id=${lastIdRef.current}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        if (full) {
+          setMessages(data.data);
+          if (data.data.length > 0) lastIdRef.current = data.data[data.data.length - 1].id;
+        } else {
+          const fresh = data.data.filter((m: Message) => m.id > lastIdRef.current);
+          if (fresh.length > 0) {
+            setMessages((prev) => {
+              const existing = new Set(prev.map((m) => m.id));
+              const toAdd = fresh.filter((m: Message) => !existing.has(m.id));
+              return [...prev, ...toAdd];
+            });
+            lastIdRef.current = fresh[fresh.length - 1].id;
+          }
         }
       }
-    } catch (error) {
-      console.error("Error loading messages:", error);
-      toast.error("Failed to load messages");
+    } catch {
+      // silent
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [chatRoomId]);
 
   useEffect(() => {
-    // Scroll to bottom when new messages arrive
-    scrollToBottom();
+    loadMessages(true);
+    // Poll every 2 seconds for new messages
+    pollRef.current = setInterval(() => loadMessages(false), 2000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [loadMessages]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!newMessage.trim() || !socket || !isConnected) {
-      return;
-    }
-
-    const messageText = newMessage.trim();
+    const text = newMessage.trim();
+    if (!text || sending) return;
+    setSending(true);
     setNewMessage("");
-
     try {
-      // Send via Socket.IO
-      socket.emit("send_message", {
-        chat_room_id: chatRoomId,
-        message: messageText,
-      });
-
-      // Also send via HTTP API as backup
-      const response = await fetch(`http://localhost:8000/api/v1/chat/rooms/${chatRoomId}/messages`, {
+      const res = await fetch(`${API}/rooms/${chatRoomId}/messages?sender_id=${currentUserId}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ message: messageText }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
       });
-
-      if (!response.ok) {
-        const data = await response.json();
+      const data = await res.json();
+      if (data.success && data.data) {
+        setMessages((prev) => {
+          if (prev.find((m) => m.id === data.data.id)) return prev;
+          return [...prev, data.data];
+        });
+        lastIdRef.current = Math.max(lastIdRef.current, data.data.id);
+      } else {
         toast.error(data.message || "Failed to send message");
+        setNewMessage(text);
       }
-    } catch (error) {
-      console.error("Error sending message:", error);
+    } catch {
       toast.error("Failed to send message");
+      setNewMessage(text);
+    } finally {
+      setSending(false);
     }
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
+  const fmt = (d: string) => {
+    const date = new Date(d);
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-
-    if (minutes < 1) return "Just now";
-    if (minutes < 60) return `${minutes}m ago`;
-    if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`;
-    
+    const mins = Math.floor((now.getTime() - date.getTime()) / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="mt-2 text-gray-600">Loading chat...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl h-[600px] flex flex-col">
+    <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white w-full sm:rounded-2xl sm:shadow-2xl sm:max-w-lg h-[85vh] sm:h-[600px] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="border-b border-gray-200 p-4 flex justify-between items-center">
+        <div className="bg-blue-600 px-5 py-4 flex items-center justify-between shrink-0">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">{otherUserName}</h3>
-            {roomTitle && (
-              <p className="text-sm text-gray-500">{roomTitle}</p>
-            )}
-            <div className="flex items-center gap-2 mt-1">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-gray-400"}`}></div>
-              <span className="text-xs text-gray-500">{isConnected ? "Online" : "Offline"}</span>
-            </div>
+            <p className="text-xs text-blue-200 font-medium uppercase tracking-wide">Chat</p>
+            <h3 className="text-white font-semibold leading-tight">{otherUserName}</h3>
+            {roomTitle && <p className="text-blue-200 text-xs mt-0.5 truncate max-w-[240px]">{roomTitle}</p>}
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Messages */}
-        <div
-          ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
-        >
-          {messages.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
-              <p>No messages yet. Start the conversation!</p>
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-50">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-3">
+                <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <p className="text-gray-500 text-sm">No messages yet. Say hi!</p>
             </div>
           ) : (
-            messages.map((message) => {
-              const isOwnMessage = message.sender_id === currentUserId;
+            messages.map((msg) => {
+              const mine = msg.sender_id === currentUserId;
               return (
-                <div
-                  key={message.id}
-                  className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                      isOwnMessage
-                        ? "bg-blue-600 text-white"
-                        : "bg-white text-gray-900 border border-gray-200"
-                    }`}
-                  >
-                    {!isOwnMessage && (
-                      <p className="text-xs font-medium mb-1 opacity-75">{message.sender_name}</p>
+                <div key={msg.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[75%] ${mine ? "items-end" : "items-start"} flex flex-col gap-1`}>
+                    {!mine && (
+                      <span className="text-xs font-medium text-gray-500 px-1">{msg.sender_name}</span>
                     )}
-                    <p className="text-sm whitespace-pre-wrap break-words">{message.message}</p>
-                    <p className={`text-xs mt-1 ${isOwnMessage ? "text-blue-100" : "text-gray-500"}`}>
-                      {formatTime(message.created_at)}
-                    </p>
+                    <div className={`px-4 py-2.5 rounded-2xl text-sm ${
+                      mine
+                        ? "bg-blue-600 text-white rounded-tr-sm"
+                        : "bg-white text-gray-800 border border-gray-200 rounded-tl-sm shadow-sm"
+                    }`}>
+                      <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.message}</p>
+                    </div>
+                    <span className={`text-xs px-1 ${mine ? "text-right text-gray-400" : "text-gray-400"}`}>
+                      {fmt(msg.created_at)}
+                    </span>
                   </div>
                 </div>
               );
@@ -247,22 +180,27 @@ export default function Chat({ chatRoomId, currentUserId, otherUserName, roomTit
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSendMessage} className="border-t border-gray-200 p-4">
-          <div className="flex gap-2">
+        <form onSubmit={handleSend} className="px-4 py-3 border-t border-gray-100 bg-white shrink-0">
+          <div className="flex gap-2 items-center">
             <input
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
-              disabled={!isConnected}
+              className="flex-1 px-4 py-2.5 bg-gray-100 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
             />
             <button
               type="submit"
-              disabled={!newMessage.trim() || !isConnected}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!newMessage.trim() || sending}
+              className="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 flex items-center justify-center text-white transition-all shrink-0"
             >
-              Send
+              {sending ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              )}
             </button>
           </div>
         </form>
@@ -270,4 +208,3 @@ export default function Chat({ chatRoomId, currentUserId, otherUserName, roomTit
     </div>
   );
 }
-
