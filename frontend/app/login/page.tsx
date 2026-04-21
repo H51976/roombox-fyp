@@ -14,6 +14,8 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showVerifyBanner, setShowVerifyBanner] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -74,6 +76,12 @@ export default function LoginPage() {
         }
         if (data.data?.user) {
           localStorage.setItem("user", JSON.stringify(data.data.user));
+        }
+
+        // Show email not verified banner (non-blocking)
+        if (data.data?.user?.is_verified === false) {
+          setResendEmail(formData.email);
+          setShowVerifyBanner(true);
         }
         
         // Show success toast
@@ -136,6 +144,27 @@ export default function LoginPage() {
                 {errorMessage}
               </div>
             )}
+            {showVerifyBanner && (
+              <div className="bg-amber-50/90 backdrop-blur-sm border border-amber-300/60 text-amber-900 px-4 py-3 rounded-xl text-sm">
+                <p className="font-medium mb-1">Email not verified</p>
+                <p className="text-xs mb-2">Please check your inbox and click the verification link.</p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await fetch("http://localhost:8000/api/v1/auth/resend-verification", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email: resendEmail }),
+                    });
+                    toast.success("Verification email resent!");
+                    setShowVerifyBanner(false);
+                  }}
+                  className="text-xs underline font-medium hover:text-amber-700 transition-colors"
+                >
+                  Resend verification email
+                </button>
+              </div>
+            )}
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-1.5">
@@ -189,7 +218,7 @@ export default function LoginPage() {
                   Remember me
                 </label>
               </div>
-              <Link href="#" className="text-gray-900 hover:text-gray-700 font-medium transition-colors">
+              <Link href="/forgot-password" className="text-gray-900 hover:text-gray-700 font-medium transition-colors">
                 Forgot password?
               </Link>
             </div>

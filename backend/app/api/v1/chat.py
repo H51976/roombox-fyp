@@ -113,28 +113,25 @@ async def get_chat_rooms(
 async def get_messages(
     chat_room_id: int,
     db: Session = Depends(get_db),
-    page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(50, ge=1, le=100, description="Messages per page"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    after_id: Optional[int] = Query(None, description="Return only messages with id > after_id"),
 ):
-    """
-    Get messages for a specific chat room
-    """
+    """Get messages for a specific chat room, optionally filtered by after_id for polling."""
     chat_room = db.query(ChatRoom).filter(ChatRoom.id == chat_room_id).first()
     if not chat_room:
-        return error_response(
-            message="Chat room not found",
-            status_code=status.HTTP_404_NOT_FOUND
-        )
-    
-    # Get messages with pagination
-    offset = (page - 1) * limit
-    messages = db.query(ChatMessage).filter(
-        ChatMessage.chat_room_id == chat_room_id
-    ).order_by(ChatMessage.created_at.desc()).offset(offset).limit(limit).all()
-    
-    # Reverse to show oldest first
-    messages = list(reversed(messages))
-    
+        return error_response(message="Chat room not found", status_code=status.HTTP_404_NOT_FOUND)
+
+    q = db.query(ChatMessage).filter(ChatMessage.chat_room_id == chat_room_id)
+    if after_id:
+        q = q.filter(ChatMessage.id > after_id)
+        messages = q.order_by(ChatMessage.created_at.asc()).limit(limit).all()
+    else:
+        offset = (page - 1) * limit
+        messages = list(reversed(
+            q.order_by(ChatMessage.created_at.desc()).offset(offset).limit(limit).all()
+        ))
+
     result = []
     for msg in messages:
         sender = db.query(User).filter(User.id == msg.sender_id).first()
@@ -147,7 +144,7 @@ async def get_messages(
             "is_read": msg.is_read,
             "created_at": msg.created_at.isoformat() if msg.created_at else None,
         })
-    
+
     return success_response(data=result, message="Messages retrieved successfully")
 
 
@@ -156,31 +153,23 @@ async def send_message(
     chat_room_id: int,
     message_data: MessageRequest,
     db: Session = Depends(get_db),
+    sender_id: Optional[int] = Query(None, description="Sender user ID"),
 ):
-    """
-    Send a message in a chat room
-    """
+    """Send a message in a chat room. Pass sender_id as query param."""
     chat_room = db.query(ChatRoom).filter(ChatRoom.id == chat_room_id).first()
     if not chat_room:
-        return error_response(
-            message="Chat room not found",
-            status_code=status.HTTP_404_NOT_FOUND
-        )
-    
-    # TODO: Get user from JWT token
-    user = db.query(User).filter(User.user_type.in_(["tenant", "landlord", "TENANT", "LANDLORD"])).first()
+        return error_response(message="Chat room not found", status_code=status.HTTP_404_NOT_FOUND)
+
+    if sender_id:
+        user = db.query(User).filter(User.id == sender_id).first()
+    else:
+        user = db.query(User).filter(User.user_type.in_(["tenant", "landlord", "TENANT", "LANDLORD"])).first()
+
     if not user:
-        return error_response(
-            message="User not found",
-            status_code=status.HTTP_401_UNAUTHORIZED
-        )
-    
-    # Verify user is part of this chat room
+        return error_response(message="User not found", status_code=status.HTTP_401_UNAUTHORIZED)
+
     if user.id != chat_room.tenant_id and user.id != chat_room.landlord_id:
-        return error_response(
-            message="Unauthorized",
-            status_code=status.HTTP_403_FORBIDDEN
-        )
+        return error_response(message="Unauthorized", status_code=status.HTTP_403_FORBIDDEN)
     
     # Create message
     new_message = ChatMessage(
@@ -219,13 +208,15 @@ async def send_message(
 async def create_chat_room(
     landlord_id: int = Query(..., description="Landlord ID"),
     room_id: Optional[int] = Query(None, description="Room ID (optional)"),
+    tenant_id: Optional[int] = Query(None, description="Tenant user ID"),
     db: Session = Depends(get_db),
 ):
-    """
-    Create a new chat room between tenant and landlord
-    """
-    # TODO: Get tenant from JWT token
-    tenant = db.query(User).filter(User.user_type.in_(["tenant", "TENANT"])).first()
+    """Create a new chat room between tenant and landlord. Pass tenant_id as query param."""
+    if tenant_id:
+        tenant = db.query(User).filter(User.id == tenant_id).first()
+    else:
+        tenant = db.query(User).filter(User.user_type.in_(["tenant", "TENANT"])).first()
+
     if not tenant:
         return error_response(
             message="Tenant not found",
