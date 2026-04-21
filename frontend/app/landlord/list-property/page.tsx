@@ -36,6 +36,7 @@ export default function ListPropertyPage() {
     price_per_month: "",
     security_deposit: "",
     advance_payment: "",
+    tenancy_duration_days: "",
     total_rooms: "1",
     available_rooms: "1",
     bathrooms: "1",
@@ -185,6 +186,7 @@ export default function ListPropertyPage() {
           total_floors: formData.total_floors ? parseInt(formData.total_floors) : null,
           area_sqft: formData.area_sqft ? parseFloat(formData.area_sqft) : null,
           furnishing_status: formData.furnishing_status || null,
+          tenancy_duration_days: formData.tenancy_duration_days ? parseInt(formData.tenancy_duration_days) : null,
           images: imageData.length > 0 ? imageData : undefined,
         }),
       });
@@ -424,6 +426,23 @@ export default function ListPropertyPage() {
                   onChange={handleChange}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
                 />
+              </div>
+              <div>
+                <label htmlFor="tenancy_duration_days" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Tenancy Duration (days) <span className="text-gray-400 font-normal">— optional</span>
+                </label>
+                <input
+                  type="number"
+                  id="tenancy_duration_days"
+                  name="tenancy_duration_days"
+                  min="1"
+                  step="1"
+                  placeholder="e.g. 365"
+                  value={formData.tenancy_duration_days}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
+                />
+                <p className="text-xs text-gray-400 mt-1">How many days the tenant can stay. Leave blank for open-ended.</p>
               </div>
             </div>
           </div>
